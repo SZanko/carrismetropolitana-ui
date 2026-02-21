@@ -28,7 +28,7 @@ impl From<Arrival> for BusArrival {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn main() {
-    let mut api = CarrisClient::new();
+    let api = CarrisClient::new();
     let ui = ui();
 
     slint::spawn_local(async_compat::Compat::new(async move {

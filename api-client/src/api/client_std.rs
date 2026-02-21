@@ -14,6 +14,13 @@ impl CarrisClient {
         }
     }
 
+    pub fn new_with_base_url(base_url: impl Into<String>) -> Self {
+        Self {
+            base_url: base_url.into(),
+            client: reqwest::Client::new(),
+        }
+    }
+
     pub async fn arrivals_by_stop(&self, stop: &str) -> Result<Vec<Arrival>, reqwest::Error> {
         let url = format!("{}/arrivals/by_stop/{}", self.base_url, stop);
         self.client.get(url).send().await?.json::<Vec<Arrival>>().await
