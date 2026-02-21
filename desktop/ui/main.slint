@@ -17,20 +17,23 @@ export component MainWindow inherits Window {
     in property <[BusArrival]> next_busses;
 
     Vertical {
+        height: 100%;
         SearchBar {
             placeholder_text: busstation-label;
             items: bus_stations;
+            
+            
         }
 
         ScrollView {
-            width: 100%;
-            height: 100%;
+            vertical_scrollbar_policy: always-on;
 
             Vertical {
+
                 for bus in next_busses : ListTile {
                    width: 100%;
                    height: 72px;
-                   text: bus.number + " arrives at " + bus.arrival_time;
+                   text: bus.number + " to " + bus.direction + " arrives at " + bus.arrival_time;
                 }
             }
         }
