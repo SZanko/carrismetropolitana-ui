@@ -2,17 +2,18 @@
   description = "Cross-platform template for Slint and Rust apps using Nix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    #nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    {
-      nixpkgs,
-      rust-overlay,
-      flake-utils,
-      ...
+    { self
+    , nixpkgs
+    , rust-overlay
+    , flake-utils
+    , ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -36,7 +37,7 @@
           ios =
             if enabled (builtins.getEnv "NO_IOS") then
               false
-            # otherwise (if NO_IOS is not set):
+              # otherwise (if NO_IOS is not set):
             else if isMac then
               true # iOS utils only work on macOS ...
             else
@@ -44,7 +45,7 @@
           linux =
             if enabled (builtins.getEnv "NO_LINUX") then
               false
-            # otherwise (if NO_LINUX is not set):
+              # otherwise (if NO_LINUX is not set):
             else if isLinux then
               true # Linux utils only work on a Linux machine...
             else
@@ -52,7 +53,7 @@
           macos =
             if enabled (builtins.getEnv "NO_MACOS") then
               false
-            # otherwise (if NO_MACOS is not set):
+              # otherwise (if NO_MACOS is not set):
             else if isMac then
               true # macOS utils only work on a macOS machine ...
             else
@@ -77,41 +78,41 @@
                   [ ]
               )
               ++
-                # MacOS targets
-                (
-                  if roles.macos then
-                    if system == "aarch64-darwin" then
-                      [ "aarch64-apple-darwin" ]
-                    else if system == "x86_64-darwin" then
-                      [ "x86_64-apple-darwin" ]
-                    else
-                      builtins.throw "Unsupported macOS architecture: ${system}. Only aarch64-darwin and x86_64-darwin are supported."
+              # MacOS targets
+              (
+                if roles.macos then
+                  if system == "aarch64-darwin" then
+                    [ "aarch64-apple-darwin" ]
+                  else if system == "x86_64-darwin" then
+                    [ "x86_64-apple-darwin" ]
                   else
-                    [ ]
-                )
+                    builtins.throw "Unsupported macOS architecture: ${system}. Only aarch64-darwin and x86_64-darwin are supported."
+                else
+                  [ ]
+              )
               ++
-                # Android targets
-                (
-                  if roles.android then
-                    [
-                      "aarch64-linux-android"
-                      "x86_64-linux-android"
-                      # optionally include older "armv7-linux-androideabi" and "i686-linux-android"
-                    ]
-                  else
-                    [ ]
-                )
+              # Android targets
+              (
+                if roles.android then
+                  [
+                    "aarch64-linux-android"
+                    "x86_64-linux-android"
+                    # optionally include older "armv7-linux-androideabi" and "i686-linux-android"
+                  ]
+                else
+                  [ ]
+              )
               ++
-                # iOS targets
-                (
-                  if roles.ios then
-                    [
-                      "aarch64-apple-ios"
-                      "aarch64-apple-ios-sim"
-                    ]
-                  else
-                    [ ]
-                );
+              # iOS targets
+              (
+                if roles.ios then
+                  [
+                    "aarch64-apple-ios"
+                    "aarch64-apple-ios-sim"
+                  ]
+                else
+                  [ ]
+              );
             # TODO: find a way to include "aarch64-pc-windows-msvc" "x86_64-pc-windows-msvc"
           })
           clippy
@@ -132,9 +133,10 @@
           codebook # efficient spellchecker for code
           nil # Nix language server (older)
           nixd # Nix language server (newer)
-          nixfmt-rfc-style # Official Nix formatter
+          nixfmt # Official Nix formatter
           nushell # powerful and pragmatic shell written in Rust
           tombi # TOML language server
+          #jetbrains.rust-rover
         ];
 
         linuxLdLibraryPath =
@@ -221,7 +223,7 @@
                 systemImageTypes = [ "google_apis_playstore" ];
               };
             in
-            composition.androidsdk
+              composition.androidsdk
           else
             null;
 
@@ -234,7 +236,21 @@
           else
             builtins.throw "Unsupported architecture: ${system}. Only x86_64-linux, x86_64-darwin, aarch64-linux, and aarch64-darwin are supported for Android development.";
       in
-      {
+        {
+        packages.slint-preview = pkgs.writeShellApplication {
+          name = "slint-preview";
+          runtimeInputs = with pkgs; [ slint-viewer ];
+          text = ''
+          exec slint-viewer ui/main.slint \
+          -L 'material=./material-1.0/material.slint' \
+          "$@"
+          '';
+        };
+
+        apps.slint-preview = flake-utils.lib.mkApp {
+          drv = self.packages.${system}.slint-preview;
+        };
+
         devShells.default = pkgs.mkShell {
           name = "dev";
 
