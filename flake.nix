@@ -237,14 +237,50 @@
             builtins.throw "Unsupported architecture: ${system}. Only x86_64-linux, x86_64-darwin, aarch64-linux, and aarch64-darwin are supported for Android development.";
       in
         {
-        packages.slint-preview = pkgs.writeShellApplication {
-          name = "slint-preview";
-          runtimeInputs = with pkgs; [ slint-viewer ];
-          text = ''
-          exec slint-viewer ui/main.slint \
-          -L 'material=./material-1.0/material.slint' \
-          "$@"
-          '';
+        packages = {
+
+          carris-desktop = pkgs.rustPlatform.buildRustPackage {
+            pname = "carris-desktop";
+            version = "0.1.0";
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+            src = ./.;
+
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              rustPlatform.bindgenHook
+            ];
+
+
+            buildInputs =
+              rustTools
+              ++ slintTools
+              ++ extraTools
+              ++ (if roles.linux then linuxTools else [ ])
+              ++ (if roles.macos then macosTools else [ ])
+              ++ (if roles.android then androidTools else [ ])
+              ++ (if roles.ios then iosTools else [ ]);
+
+            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
+              (if roles.linux then linuxLdLibraryPath else [ ])
+              ++ (if roles.macos then macosLdLibraryPath else [ ])
+              ++ (if roles.android then androidLdLibraryPath else [ ])
+              ++ (if roles.ios then iosLdLibraryPath else [ ])
+            );
+
+          };
+
+          default = self.packages.${system}.carris-desktop;
+          slint-preview = pkgs.writeShellApplication {
+            name = "slint-preview";
+            runtimeInputs = with pkgs; [ slint-viewer ];
+            text = ''
+            exec slint-viewer ui/main.slint \
+            -L 'material=./material-1.0/material.slint' \
+            "$@"
+            '';
+          };
         };
 
         apps.slint-preview = flake-utils.lib.mkApp {
