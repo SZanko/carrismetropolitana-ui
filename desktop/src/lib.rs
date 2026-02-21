@@ -1,3 +1,5 @@
+mod config;
+
 use std::ptr::null;
 use std::time::Instant;
 use slint::{ModelRc, VecModel};
@@ -28,6 +30,11 @@ impl From<Arrival> for BusArrival {
 pub fn main() {
     let mut api = CarrisClient::new();
     let ui = ui();
+
+    slint::spawn_local(async_compat::Compat::new(async move {
+        println!("Check if stops file exists and if not download it")
+
+    })).unwrap();
 
     let dummy_busses = vec![
         BusArrival {

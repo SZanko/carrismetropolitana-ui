@@ -1,5 +1,5 @@
 use alloc::string::String;
-use crate::types::Arrival;
+use crate::types::{Arrival, Stop};
 
 pub struct CarrisClient {
     base_url: String,
@@ -19,8 +19,9 @@ impl CarrisClient {
         self.client.get(url).send().await?.json::<Vec<Arrival>>().await
     }
 
-    pub async fn get_stop_id(&self, stop: &str) -> Result<Option<String>, reqwest::Error> {
-        let url = format!("{}/arrivals/by_stop/{}", self.base_url, stop);
-        self.client.get(url).send().await?.json::<Option<String>>().await
+
+    pub async fn get_all_stops(&self) -> Result<Vec<Stop>, reqwest::Error> {
+        let url = format!("{}/stops", self.base_url);
+        self.client.get(url).send().await?.json::<Vec<Stop>>().await
     }
 }

@@ -21,6 +21,8 @@ slint = { version = "1.15", features = [
     "live-preview", # It enables hot reloading.
     "renderer-femtovg", # It is the only renderer that simply works out of the box on desktop. It has impact only on desktop.
 ] }
+defmt = { version = "1.0.1", features = ["alloc"] }
+xdg = { version = "3.0.0", features = ["serde"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
