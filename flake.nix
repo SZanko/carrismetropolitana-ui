@@ -6,6 +6,7 @@
     #nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -13,6 +14,7 @@
     , nixpkgs
     , rust-overlay
     , flake-utils
+    , crane
     , ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -25,6 +27,10 @@
           config.allowUnfree = true;
           android_sdk.accept_license = if roles.android then true else false;
         };
+
+        craneLib = crane.mkLib pkgs;
+        src = craneLib.cleanCargoSource ./.;
+
 
         isMac = pkgs.stdenv.isDarwin;
         isLinux = pkgs.stdenv.isLinux;
@@ -238,13 +244,10 @@
       in
         {
         packages = {
-
-          carris-desktop = pkgs.rustPlatform.buildRustPackage {
+          carris-desktop = craneLib.buildPackage {
             pname = "carris-desktop";
             version = "0.1.0";
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
+
             src = ./.;
 
             nativeBuildInputs = with pkgs; [
@@ -268,8 +271,39 @@
               ++ (if roles.android then androidLdLibraryPath else [ ])
               ++ (if roles.ios then iosLdLibraryPath else [ ])
             );
-
           };
+
+          #carris-desktop = pkgs.rustPlatform.buildRustPackage {
+          #  pname = "carris-desktop";
+          #  version = "0.1.0";
+          #  cargoLock = {
+          #    lockFile = ./Cargo.lock;
+          #  };
+          #  src = ./.;
+
+          #  nativeBuildInputs = with pkgs; [
+          #    pkg-config
+          #    rustPlatform.bindgenHook
+          #  ];
+
+
+          #  buildInputs =
+          #    rustTools
+          #    ++ slintTools
+          #    ++ extraTools
+          #    ++ (if roles.linux then linuxTools else [ ])
+          #    ++ (if roles.macos then macosTools else [ ])
+          #    ++ (if roles.android then androidTools else [ ])
+          #    ++ (if roles.ios then iosTools else [ ]);
+
+          #  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
+          #    (if roles.linux then linuxLdLibraryPath else [ ])
+          #    ++ (if roles.macos then macosLdLibraryPath else [ ])
+          #    ++ (if roles.android then androidLdLibraryPath else [ ])
+          #    ++ (if roles.ios then iosLdLibraryPath else [ ])
+          #  );
+
+          #};
 
           default = self.packages.${system}.carris-desktop;
           slint-preview = pkgs.writeShellApplication {

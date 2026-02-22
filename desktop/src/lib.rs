@@ -55,6 +55,7 @@ pub fn main() {
     slint::spawn_local(async_compat::Compat::new(async move {
 
         println!("Get Bus Data for home STOP");
+        println!("Get Bus Data for home STOP");
 
         // TODO don't hard code this
         let result = api.arrivals_by_stop("020387").await.unwrap();
