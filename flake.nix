@@ -33,7 +33,7 @@
         enabled = v: v == "1";
 
         roles = {
-          android = if enabled (builtins.getEnv "NO_ANDROID") then false else true;
+          android = if enabled (builtins.getEnv "ANDROID") then true else false;
           ios =
             if enabled (builtins.getEnv "NO_IOS") then
               false
