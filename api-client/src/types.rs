@@ -1,7 +1,7 @@
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use alloc::string::String;
 
-#[derive(Debug, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Arrival {
     pub estimated_arrival_unix: Option<i64>,
     pub observed_arrival_unix: Option<i64>,
@@ -13,7 +13,7 @@ pub struct Arrival {
     pub headsign: String,
     pub scheduled_arrival: Option<String>,
 }
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stop {
     #[serde(rename = "district_id")]
@@ -52,6 +52,22 @@ where
 {
     let s = String::deserialize(deserializer)?;
     s.parse::<i16>().map_err(serde::de::Error::custom)
+}
+
+pub trait CarrisAPI {
+    type Error;
+
+    fn new()->Self;
+    fn new_with_base_url(base_url: &str) -> Self;
+
+    fn arrivals_by_stop<'a>(
+        &'a self,
+        stop: &'a str,
+    ) -> impl Future<Output = Result<Vec<Arrival>, Self::Error>> + 'a;
+
+    fn get_all_stops<'a>(
+        &'a self,
+    ) -> impl Future<Output = Result<Vec<Stop>, Self::Error>> + 'a;
 }
 
 pub fn best_arrival_unix(a: &Arrival) -> Option<i64> {

@@ -1,14 +1,19 @@
 mod config;
 
-use std::ptr::null;
-use std::time::Instant;
+use std::sync::OnceLock;
 use slint::{ModelRc, VecModel};
 use carris_api::api::CarrisClient;
-use carris_api::types::Arrival;
+use carris_api::types::{Arrival, CarrisAPI};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 slint::include_modules!();
+
+static API_CLIENT: OnceLock<CarrisClient> = OnceLock::new();
+
+pub fn api_client() -> &'static CarrisClient {
+    API_CLIENT.get_or_init(|| CarrisClient::new())
+}
 
 fn ui() -> MainWindow {
     MainWindow::new().unwrap()
@@ -28,11 +33,20 @@ impl From<Arrival> for BusArrival {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn main() {
-    let api = CarrisClient::new();
     let ui = ui();
 
+    let ui_handle_stops = ui.clone_strong();
     slint::spawn_local(async_compat::Compat::new(async move {
-        println!("Check if stops file exists and if not download it")
+        match config::get_all_stops_cached().await {
+            Ok(stops) => {
+                println!("Stops: {:?}", stops);
+                //ui_handle.set_bus_stations();
+            }
+            Err(e) => {
+                eprintln!("Failed to load stops: {e}");
+                ui_handle_stops.set_busstation_label("Cannot load all stops".into())
+            }
+        }
 
     })).unwrap();
 
@@ -49,21 +63,19 @@ pub fn main() {
         },
     ];
 
-    let ui_handle = ui.clone_strong();
 
+    let ui_handle_busses = ui.clone_strong();
 
     slint::spawn_local(async_compat::Compat::new(async move {
 
         println!("Get Bus Data for home STOP");
-        println!("Get Bus Data for home STOP");
-
         // TODO don't hard code this
-        let result = api.arrivals_by_stop("020387").await.unwrap();
+        let result = api_client().arrivals_by_stop("020387").await.unwrap();
 
         let bus_arrivals: Vec<BusArrival> = result.into_iter().map(BusArrival::from).collect();
         println!("Length of the content is: {}", bus_arrivals.len());
         let model = ModelRc::new(VecModel::from(bus_arrivals));
-        ui_handle.set_next_busses(model);
+        ui_handle_busses.set_next_busses(model);
     })).expect("Cannot get Bus Data");
 
     //let model = ModelRc::new(VecModel::from(dummy_busses));

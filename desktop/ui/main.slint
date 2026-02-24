@@ -10,8 +10,6 @@ struct BusArrival {
 }
 
 export component MainWindow inherits Window {
-    property <int> count: 0;
-
     in property <string> busstation_label: "Search for Busstation";
     in property <[ListItem]> bus_stations;
     in property <[BusArrival]> next_busses;
@@ -21,8 +19,6 @@ export component MainWindow inherits Window {
         SearchBar {
             placeholder_text: busstation-label;
             items: bus_stations;
-            
-            
         }
 
         ScrollView {
@@ -39,18 +35,4 @@ export component MainWindow inherits Window {
         }
 
     }
-
-
-
-    //ElevatedCard {
-    //    width: 90%;
-    //    height: 90%;
-    //    FilledButton {
-    //        text: "Count: " + count;
-    //        icon: @image-url("slint-logo.svg");
-    //        clicked => {
-    //            count += 1;
-    //        }
-    //    }
-    //}
 }
