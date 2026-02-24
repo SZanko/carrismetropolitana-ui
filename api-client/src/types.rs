@@ -1,6 +1,8 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use alloc::string::String;
+use serde_json::Value;
 
+// https://transform.tools/json-to-rust-serde
 #[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Arrival {
     pub estimated_arrival_unix: Option<i64>,
@@ -13,33 +15,29 @@ pub struct Arrival {
     pub headsign: String,
     pub scheduled_arrival: Option<String>,
 }
-#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stop {
     #[serde(rename = "district_id")]
-    pub district_id: String,
-    pub facilities: Vec<String>,
+    pub district_id: Value,
+    pub facilities: Vec<Value>,
     pub id: String,
     pub lat: f64,
     #[serde(rename = "line_ids")]
     pub line_ids: Vec<String>,
-    #[serde(rename = "locality_id")]
-    pub locality_id: String,
     pub lon: f64,
     #[serde(rename = "long_name")]
     pub long_name: String,
     #[serde(rename = "municipality_id")]
-    pub municipality_id: String,
-    #[serde(rename = "operational_status")]
-    pub operational_status: String,
+    pub municipality_id: Value,
     #[serde(rename = "pattern_ids")]
     pub pattern_ids: Vec<String>,
     #[serde(rename = "region_id")]
-    pub region_id: String,
+    pub region_id: Value,
     #[serde(rename = "route_ids")]
     pub route_ids: Vec<String>,
     #[serde(rename = "short_name")]
-    pub short_name: String,
+    pub short_name: Value,
     #[serde(rename = "tts_name")]
     pub tts_name: String,
     #[serde(rename = "wheelchair_boarding")]

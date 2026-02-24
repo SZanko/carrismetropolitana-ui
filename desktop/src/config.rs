@@ -34,7 +34,6 @@ where
 
     println!("Check if stops file exists and if not download it");
     let stops = api.get_all_stops().await?;
-    println!("{:?}", stops);
     let json_stops = serde_json::to_vec_pretty(&stops)?;
     let path = xdg.place_cache_file("all-stops.json")?;
     fs::write(path, json_stops)?;
@@ -55,7 +54,6 @@ pub async fn get_all_stops_cached() -> anyhow::Result<Vec<Stop>> {
         .ok_or_else(|| anyhow::anyhow!("cache file all_stops.json still missing after ensure"))?;
 
     let bytes = fs::read(path)?;
-    println!("{}", std::str::from_utf8(&bytes)?);
     println!("Try to serialize the stops into a list");
     let stops: Vec<Stop> = serde_json::from_slice(&bytes)?;
 

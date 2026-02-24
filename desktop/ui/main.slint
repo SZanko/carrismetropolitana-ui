@@ -12,13 +12,24 @@ struct BusArrival {
 export component MainWindow inherits Window {
     in property <string> busstation_label: "Search for Busstation";
     in property <[ListItem]> bus_stations;
+    in property <[string]> bus_stations_ids;
     in property <[BusArrival]> next_busses;
+
+    callback bus_station_selected(text: string);
+    callback searchbar_bus_station_clicked(index: int);
 
     Vertical {
         height: 100%;
         SearchBar {
             placeholder_text: busstation-label;
             items: bus_stations;
+
+            accepted(text) => {
+                bus_station_selected(text);
+            }
+            action-button-clicked(index) => {
+                searchbar_bus_station_clicked(index);
+            }
         }
 
         ScrollView {

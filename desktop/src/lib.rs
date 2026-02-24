@@ -1,9 +1,10 @@
 mod config;
 
-use std::sync::OnceLock;
-use slint::{ModelRc, VecModel};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+use slint::{Color, Image, ModelRc, SharedString, VecModel};
 use carris_api::api::CarrisClient;
-use carris_api::types::{Arrival, CarrisAPI};
+use carris_api::types::{Arrival, CarrisAPI, Stop};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -31,16 +32,51 @@ impl From<Arrival> for BusArrival {
     }
 }
 
+
+fn stops_to_models(stops: Vec<Stop>) -> (ModelRc<ListItem>, ModelRc<SharedString>) {
+    let mut items = Vec::with_capacity(stops.len());
+    let mut ids = Vec::with_capacity(stops.len());
+
+    for s in stops {
+        ids.push(SharedString::from(s.id.clone()));
+
+        items.push(ListItem {
+            text: s.long_name.into(),          // what user sees
+            supporting_text: s.id.into(), // optional (e.g. municipality)
+            avatar_icon: Image::default(),
+            avatar_text: SharedString::new(),
+            avatar_background: Color::from_argb_u8(0, 0, 0, 0),
+            avatar_foreground: Color::from_argb_u8(0, 0, 0, 0),
+            action_button_icon: Image::default(),
+        });
+    }
+
+    (ModelRc::new(VecModel::from(items)), ModelRc::new(VecModel::from(ids)))
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn main() {
     let ui = ui();
 
+    let lookup: Arc<Mutex<HashMap<String, String>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let lookup_for_task = lookup.clone();
+
     let ui_handle_stops = ui.clone_strong();
+
     slint::spawn_local(async_compat::Compat::new(async move {
         match config::get_all_stops_cached().await {
             Ok(stops) => {
-                println!("Stops: {:?}", stops);
-                //ui_handle.set_bus_stations();
+                println!("Stops: {:?}", stops.len());
+                let lookup_stops = stops.clone();
+                let (bus_stations, bus_station_ids) = stops_to_models(stops);
+                ui_handle_stops.set_bus_stations(bus_stations);
+
+                let mut map = HashMap::with_capacity(lookup_stops.len());
+                for s in lookup_stops {
+                    map.insert(s.long_name, s.id);
+                }
+                *lookup_for_task.lock().unwrap() = map;
             }
             Err(e) => {
                 eprintln!("Failed to load stops: {e}");
@@ -49,6 +85,43 @@ pub fn main() {
         }
 
     })).unwrap();
+
+    let ui_for_cb = ui.clone_strong();
+    let lookup_for_cb = lookup.clone();
+    ui.on_bus_station_selected(move |search_text: SharedString| {
+
+
+        let name = search_text.to_string();
+
+        let stop_id = {
+            let map = lookup_for_cb.lock().unwrap();
+            map.get(&name).cloned()
+        };
+
+        let Some(stop_id) = stop_id else {
+            eprintln!("No stop id found for selection: {name}");
+            return;
+        };
+
+        eprintln!("Selected stop: {stop_id}");
+        let ui_for_task = ui_for_cb.clone_strong();
+        slint::spawn_local(async_compat::Compat::new(async move {
+            match api_client().arrivals_by_stop(&stop_id).await {
+                Ok(arrivals) => {
+                    let bus_arrivals: Vec<BusArrival> =
+                        arrivals.into_iter().map(BusArrival::from).collect();
+                    ui_for_task.set_next_busses(ModelRc::new(VecModel::from(bus_arrivals)));
+                }
+                Err(e) => eprintln!("Failed to load arrivals for {stop_id}: {e}"),
+            }
+        })).unwrap();
+    });
+
+
+    ui.on_searchbar_bus_station_clicked(move |index| {
+        println!("Search for {index}");
+    });
+
 
     let dummy_busses = vec![
         BusArrival {
