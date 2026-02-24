@@ -6,21 +6,36 @@ edition = "2024"
 [lib]
 crate-type = ["lib", "cdylib"]
 path = "src/lib.rs"
-name = "carrismetropolianaLib"
+name = "carrismetropoliana_lib"
 
 [[bin]]
 path = "src/main.rs"
 name = "CarrisMetropolianaDesktopUI"
 
 [dependencies]
-slint = { version = "1.13", features = ["backend-android-activity-06"] }
+carris-api = { path = "../api-client", features = ["std"], default-features = false}
+async-compat = "0.2.5"
+slint = { version = "1.15", features = [
+    "backend-android-activity-06", # A necessary feature for Android support.
+    "backend-winit-wayland", # It ensures Wayland support on GNU/Linux.
+    "live-preview", # It enables hot reloading.
+    "renderer-femtovg", # It is the only renderer that simply works out of the box on desktop. It has impact only on desktop.
+] }
+defmt = { version = "1.0.1", features = ["alloc"] }
+xdg = { version = "3.0.0", features = ["serde"] }
+anyhow = "1.0.102"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3.26.0"
+tokio = { version = "1.49.0", features = ["full"] }
+
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { version = "0.2" }
 console_error_panic_hook = "0.1.5"
 
 [build-dependencies]
-slint-build = { version = "1.13"  }
+slint-build = { version = "1.15"  }
 
 [package.metadata.android]
 package = "dev.slint.material_template"

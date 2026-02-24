@@ -1,18 +1,49 @@
-import { FilledButton, ElevatedCard } from "@material";
-export { MaterialWindowAdapter } from "@material";
+//import { FilledButton, ElevatedCard, SearchBar, ListTile } from "@material";
+import { ScrollView, FilledButton, ElevatedCard, SearchBar, ListTile, ListItem, Vertical } from "../material-1.0/material.slint";
+//export { MaterialWindowAdapter } from "@material";
+export { MaterialWindowAdapter } from "../material-1.0/material.slint";
+
+struct BusArrival {
+    number: int,
+    arrival_time: string,
+    direction: string,
+}
 
 export component MainWindow inherits Window {
-    property <int> count: 0;
+    in property <string> busstation_label: "Search for Busstation";
+    in property <[ListItem]> bus_stations;
+    in property <[string]> bus_stations_ids;
+    in property <[BusArrival]> next_busses;
 
-    ElevatedCard {
-        width: 90%;
-        height: 90%;
-        FilledButton {
-            text: "Count: " + count;
-            icon: @image-url("slint-logo.svg");
-            clicked => {
-                count += 1;
+    callback bus_station_selected(text: string);
+    callback searchbar_bus_station_clicked(index: int);
+
+    Vertical {
+        height: 100%;
+        SearchBar {
+            placeholder_text: busstation-label;
+            items: bus_stations;
+
+            accepted(text) => {
+                bus_station_selected(text);
+            }
+            action-button-clicked(index) => {
+                searchbar_bus_station_clicked(index);
             }
         }
+
+        ScrollView {
+            vertical_scrollbar_policy: always-on;
+
+            Vertical {
+
+                for bus in next_busses : ListTile {
+                   width: 100%;
+                   height: 72px;
+                   text: bus.number + " to " + bus.direction + " arrives at " + bus.arrival_time;
+                }
+            }
+        }
+
     }
 }
