@@ -23,16 +23,16 @@ where
     A::Error: std::error::Error + Send + Sync + 'static,
 {
     if xdg.find_cache_file("all-stops.json").is_some() {
-        println!("Found cached Stops");
+        log::info!("Found cached Stops");
         return Ok(());
     }
     else {
-        println!("No stops cached");
+        log::warn!("No stops cached");
         let expected = xdg.get_cache_file("all-stops.json").expect("REASON");
-        println!("Expecting cache at: {} and Exists? {}", expected.display(), expected.display());
+        log::warn!("Expecting cache at: {} and Exists? {}", expected.display(), expected.display());
     }
 
-    println!("Check if stops file exists and if not download it");
+    log::info!("Check if stops file exists and if not download it");
     let stops = api.get_all_stops().await?;
     let json_stops = serde_json::to_vec_pretty(&stops)?;
     let path = xdg.place_cache_file("all-stops.json")?;
@@ -54,7 +54,7 @@ pub async fn get_all_stops_cached() -> anyhow::Result<Vec<Stop>> {
         .ok_or_else(|| anyhow::anyhow!("cache file all_stops.json still missing after ensure"))?;
 
     let bytes = fs::read(path)?;
-    println!("Try to serialize the stops into a list");
+    log::info!("Try to serialize the stops into a list");
     let stops: Vec<Stop> = serde_json::from_slice(&bytes)?;
 
     Ok(stops)
