@@ -2,6 +2,7 @@ mod config;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use log::log;
 use slint::{Color, Image, ModelRc, SharedString, VecModel};
 use carris_api::api::CarrisClient;
 use carris_api::types::{Arrival, CarrisAPI, Stop};
@@ -71,7 +72,7 @@ pub fn main() {
 
 
     ui.on_searchbar_bus_station_clicked(move |index| {
-        println!("Search for {index}");
+        log::info!("Search for {index}");
     });
 
     let ui_for_task = ui.clone_strong();
@@ -80,7 +81,7 @@ pub fn main() {
         let ui_for_task = ui_for_task.clone_strong();
         slint::spawn_local(async move {
             let text = text.to_string();
-            println!("(async) got text = {text}");
+            log::info!("(async) got text = {text}");
 
 
             //ui_for_task.set_bus_stations(filter_search_results(&*text));
@@ -109,11 +110,11 @@ fn update_selected_bus_stop(ui: &MainWindow, lookup: Arc<Mutex<HashMap<String, S
         };
 
         let Some(stop_id) = stop_id else {
-            eprintln!("No stop id found for selection: {name}");
+            log::error!("No stop id found for selection: {name}");
             return;
         };
 
-        eprintln!("Selected stop: {stop_id}");
+        log::info!("Selected stop: {stop_id}");
         let ui_for_task = ui_for_cb.clone_strong();
         slint::spawn_local(async_compat::Compat::new(async move {
             match api_client().arrivals_by_stop(&stop_id).await {
@@ -122,7 +123,7 @@ fn update_selected_bus_stop(ui: &MainWindow, lookup: Arc<Mutex<HashMap<String, S
                         arrivals.into_iter().map(BusArrival::from).collect();
                     ui_for_task.set_next_busses(ModelRc::new(VecModel::from(bus_arrivals)));
                 }
-                Err(e) => eprintln!("Failed to load arrivals for {stop_id}: {e}"),
+                Err(e) => log::error!("Failed to load arrivals for {stop_id}: {e}"),
             }
         })).unwrap();
     });
@@ -132,12 +133,13 @@ fn set_bus_arrivals_for_station(ui: &MainWindow) {
     let ui_handle_busses = ui.clone_strong();
 
     slint::spawn_local(async_compat::Compat::new(async move {
-        println!("Get Bus Data for home STOP");
         // TODO don't hard code this
-        let result = api_client().arrivals_by_stop("020387").await.unwrap();
+        let bus_stop_id = "020387";
+        log::info!("Getting bus data for {} id", bus_stop_id);
+        let result = api_client().arrivals_by_stop(bus_stop_id).await.unwrap();
 
         let bus_arrivals: Vec<BusArrival> = result.into_iter().map(BusArrival::from).collect();
-        println!("Length of the content is: {}", bus_arrivals.len());
+        log::info!("Length of the content is: {}", bus_arrivals.len());
         let model = ModelRc::new(VecModel::from(bus_arrivals));
         ui_handle_busses.set_next_busses(model);
     })).expect("Cannot get Bus Data");
@@ -149,7 +151,7 @@ fn fill_searchbar_with_options(lookup_for_task: Arc<Mutex<HashMap<String, String
     slint::spawn_local(async_compat::Compat::new(async move {
         match config::get_all_stops_cached().await {
             Ok(stops) => {
-                println!("Stops: {:?}", stops.len());
+                log::info!("Stops: {:?}", stops.len());
                 let lookup_stops = stops.clone();
                 let (bus_stations, bus_station_ids) = stops_to_models(stops);
                 ui_handle_stops.set_bus_stations(bus_stations);
@@ -161,7 +163,7 @@ fn fill_searchbar_with_options(lookup_for_task: Arc<Mutex<HashMap<String, String
                 *lookup_for_task.lock().unwrap() = map;
             }
             Err(e) => {
-                eprintln!("Failed to load stops: {e}");
+                log::error!("Failed to load stops: {e}");
                 ui_handle_stops.set_busstation_label("Cannot load all stops".into())
             }
         }

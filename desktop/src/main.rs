@@ -2,5 +2,5 @@
 // Just forward to the library in main
 
 fn main() {
-    carrismetropoliana_lib::main();
+    carris_ui_lib::main();
 }
