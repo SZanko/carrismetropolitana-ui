@@ -2,10 +2,11 @@ mod config;
 
 use carris_api::api::CarrisClient;
 use carris_api::types::{Arrival, CarrisAPI, Stop};
-use log::log;
 use slint::{Color, Image, ModelRc, SharedString, VecModel, Weak};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -50,7 +51,8 @@ fn stops_to_models(stops: Vec<Stop>) -> (ModelRc<ListItem>, ModelRc<SharedString
             avatar_text: SharedString::new(),
             avatar_background: Color::from_argb_u8(0, 0, 0, 0),
             avatar_foreground: Color::from_argb_u8(0, 0, 0, 0),
-            action_button_icon: Image::default(),
+            action_button_icon: Image::load_from_path(Path::new("desktop/ui/slint-logo.svg"))
+                .unwrap(), //Image::default(),
         });
     }
 
@@ -74,8 +76,14 @@ pub fn main() {
 
     update_selected_bus_stop(&ui, &lookup);
 
+    let ui_searchbar_action_button_weak = ui.as_weak();
+    let lookup_searchbar_action_button_cb = lookup.clone();
     ui.on_searchbar_bus_station_clicked(move |index| {
-        log::info!("Search for {index}");
+        spawn_action_button_to_element(
+            ui_searchbar_action_button_weak.clone(),
+            lookup_searchbar_action_button_cb.clone(),
+            index,
+        );
     });
 
     let ui_searchbar_weak = ui.as_weak();
@@ -85,19 +93,28 @@ pub fn main() {
         spawn_filter_search(ui_searchbar_weak.clone(), lookup_searchbar_cb.clone(), text);
     });
 
-
     set_bus_arrivals_for_station(&ui);
-
-    //let model = ModelRc::new(VecModel::from(dummy_busses));
-    //ui.set_next_busses(model);
 
     ui.run().unwrap();
 }
 
+fn spawn_action_button_to_element(
+    ui_weak: Weak<MainWindow>,
+    lookup: Arc<Mutex<HashMap<String, String>>>,
+    index: i32,
+) {
+    slint::spawn_local(async_compat::Compat::new(async move {
+        log::info!("Search for index {}", index);
+    }))
+    .expect("Cannot connect action button and event");
+}
+
+
 fn spawn_filter_search(
     ui_weak: Weak<MainWindow>,
     lookup: Arc<Mutex<HashMap<String, String>>>,
-    text: SharedString) {
+    text: SharedString,
+) {
     slint::spawn_local(async_compat::Compat::new(async move {
         if text.is_empty() {
             return;
@@ -114,10 +131,7 @@ fn spawn_filter_search(
         for result in results {
             let key = result.clone();
 
-            let supporting = map
-                .get(key.as_str())
-                .cloned()
-                .unwrap_or_default();
+            let supporting = map.get(key.as_str()).cloned().unwrap_or_default();
 
             filter_result.push(ListItem {
                 text: result.into(),
@@ -126,7 +140,8 @@ fn spawn_filter_search(
                 avatar_text: SharedString::new(),
                 avatar_background: Color::from_argb_u8(0, 0, 0, 0),
                 avatar_foreground: Color::from_argb_u8(0, 0, 0, 0),
-                action_button_icon: Image::default(),
+                action_button_icon: Image::load_from_path(Path::new("desktop/ui/slint-logo.svg"))
+                    .unwrap(), //Image::default(),
             })
         }
         drop(map);
@@ -134,7 +149,8 @@ fn spawn_filter_search(
         if let Some(ui) = ui_weak.upgrade() {
             ui.set_bus_stations(ModelRc::new(VecModel::from(filter_result)));
         }
-    })).expect("Cannot filter search options in searchbar");
+    }))
+    .expect("Cannot filter search options in searchbar");
 }
 
 fn filter_search_string(
@@ -178,20 +194,35 @@ fn update_selected_bus_stop(ui: &MainWindow, lookup: &Arc<Mutex<HashMap<String, 
             return;
         };
 
-        log::info!("Selected stop: {stop_id}");
+        log::info!("Selected stop: {stop_id} with long name {name}");
         let ui_for_task = ui_for_cb.clone_strong();
         slint::spawn_local(async_compat::Compat::new(async move {
             match api_client().arrivals_by_stop(&stop_id).await {
                 Ok(arrivals) => {
+                    let future_arrivals = only_future_arrivals(arrivals);
+
                     let bus_arrivals: Vec<BusArrival> =
-                        arrivals.into_iter().map(BusArrival::from).collect();
+                        future_arrivals.into_iter().map(BusArrival::from).collect();
+
                     ui_for_task.set_next_busses(ModelRc::new(VecModel::from(bus_arrivals)));
                 }
                 Err(e) => log::error!("Failed to load arrivals for {stop_id}: {e}"),
             }
         }))
-            .unwrap();
+        .unwrap();
     });
+}
+
+fn now_unix_secs() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before unix epoch")
+        .as_secs() as i64
+}
+
+fn only_future_arrivals(arrivals: impl IntoIterator<Item = Arrival>) -> Vec<Arrival> {
+    let now = now_unix_secs();
+    arrivals.into_iter().filter(|a| a.is_future(now)).collect()
 }
 
 fn set_bus_arrivals_for_station(ui: &MainWindow) {
@@ -203,12 +234,15 @@ fn set_bus_arrivals_for_station(ui: &MainWindow) {
         log::info!("Getting bus data for {} id", bus_stop_id);
         let result = api_client().arrivals_by_stop(bus_stop_id).await.unwrap();
 
-        let bus_arrivals: Vec<BusArrival> = result.into_iter().map(BusArrival::from).collect();
+        let future_arrivals = only_future_arrivals(result);
+
+        let bus_arrivals: Vec<BusArrival> =
+            future_arrivals.into_iter().map(BusArrival::from).collect();
         log::info!("Length of the content is: {}", bus_arrivals.len());
         let model = ModelRc::new(VecModel::from(bus_arrivals));
         ui_handle_busses.set_next_busses(model);
     }))
-        .expect("Cannot get Bus Data");
+    .expect("Cannot get Bus Data");
 }
 
 fn fill_searchbar_with_options(
@@ -237,7 +271,7 @@ fn fill_searchbar_with_options(
             }
         }
     }))
-        .unwrap();
+    .unwrap();
 }
 //fn filter_search_results(input: &str, existing_bus_stops_original: Vec<>, ) -> ModelRc<ListItem> {
 //

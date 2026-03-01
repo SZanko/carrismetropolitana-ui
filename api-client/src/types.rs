@@ -15,6 +15,13 @@ pub struct Arrival {
     pub headsign: String,
     pub scheduled_arrival: Option<String>,
 }
+
+impl Arrival {
+    pub fn is_future(&self, now_unix: i64) -> bool {
+        self.scheduled_arrival_unix.unwrap_or_default() > now_unix
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stop {
