@@ -54,6 +54,7 @@ fn stops_to_models(stops: Vec<Stop>) -> (ModelRc<ListItem>, ModelRc<SharedString
     (ModelRc::new(VecModel::from(items)), ModelRc::new(VecModel::from(ids)))
 }
 
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn main() {
     let ui = ui();
@@ -61,36 +62,45 @@ pub fn main() {
     let lookup: Arc<Mutex<HashMap<String, String>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let lookup_for_task = lookup.clone();
-
     let ui_handle_stops = ui.clone_strong();
 
-    slint::spawn_local(async_compat::Compat::new(async move {
-        match config::get_all_stops_cached().await {
-            Ok(stops) => {
-                println!("Stops: {:?}", stops.len());
-                let lookup_stops = stops.clone();
-                let (bus_stations, bus_station_ids) = stops_to_models(stops);
-                ui_handle_stops.set_bus_stations(bus_stations);
+    fill_searchbar_with_options(lookup_for_task, &ui);
 
-                let mut map = HashMap::with_capacity(lookup_stops.len());
-                for s in lookup_stops {
-                    map.insert(s.long_name, s.id);
-                }
-                *lookup_for_task.lock().unwrap() = map;
-            }
-            Err(e) => {
-                eprintln!("Failed to load stops: {e}");
-                ui_handle_stops.set_busstation_label("Cannot load all stops".into())
-            }
-        }
+    update_selected_bus_stop(&ui, lookup);
 
-    })).unwrap();
 
+
+    ui.on_searchbar_bus_station_clicked(move |index| {
+        println!("Search for {index}");
+    });
+
+    let ui_for_task = ui.clone_strong();
+
+    ui.on_filter_searchbar_options(move |text: SharedString| {
+        let ui_for_task = ui_for_task.clone_strong();
+        slint::spawn_local(async move {
+            let text = text.to_string();
+            println!("(async) got text = {text}");
+
+
+            //ui_for_task.set_bus_stations(filter_search_results(&*text));
+        })
+            .unwrap();
+    });
+
+
+    set_bus_arrivals_for_station(&ui);
+
+    //let model = ModelRc::new(VecModel::from(dummy_busses));
+    //ui.set_next_busses(model);
+
+    ui.run().unwrap();
+}
+
+fn update_selected_bus_stop(ui: &MainWindow, lookup: Arc<Mutex<HashMap<String, String>>>) {
     let ui_for_cb = ui.clone_strong();
     let lookup_for_cb = lookup.clone();
     ui.on_bus_station_selected(move |search_text: SharedString| {
-
-
         let name = search_text.to_string();
 
         let stop_id = {
@@ -116,31 +126,12 @@ pub fn main() {
             }
         })).unwrap();
     });
+}
 
-
-    ui.on_searchbar_bus_station_clicked(move |index| {
-        println!("Search for {index}");
-    });
-
-
-    let dummy_busses = vec![
-        BusArrival {
-            number: 742,
-            arrival_time: "10:05".into(),
-            direction: "Monte".into(),
-        },
-        BusArrival {
-            number: 69,
-            arrival_time: "10:15".into(),
-            direction: "Monte".into(),
-        },
-    ];
-
-
+fn set_bus_arrivals_for_station(ui: &MainWindow) {
     let ui_handle_busses = ui.clone_strong();
 
     slint::spawn_local(async_compat::Compat::new(async move {
-
         println!("Get Bus Data for home STOP");
         // TODO don't hard code this
         let result = api_client().arrivals_by_stop("020387").await.unwrap();
@@ -150,12 +141,35 @@ pub fn main() {
         let model = ModelRc::new(VecModel::from(bus_arrivals));
         ui_handle_busses.set_next_busses(model);
     })).expect("Cannot get Bus Data");
-
-    //let model = ModelRc::new(VecModel::from(dummy_busses));
-    //ui.set_next_busses(model);
-
-    ui.run().unwrap();
 }
+
+fn fill_searchbar_with_options(lookup_for_task: Arc<Mutex<HashMap<String, String>>>, ui: &MainWindow) {
+    let ui_handle_stops = ui.clone_strong();
+
+    slint::spawn_local(async_compat::Compat::new(async move {
+        match config::get_all_stops_cached().await {
+            Ok(stops) => {
+                println!("Stops: {:?}", stops.len());
+                let lookup_stops = stops.clone();
+                let (bus_stations, bus_station_ids) = stops_to_models(stops);
+                ui_handle_stops.set_bus_stations(bus_stations);
+
+                let mut map = HashMap::with_capacity(lookup_stops.len());
+                for s in lookup_stops {
+                    map.insert(s.long_name, s.id);
+                }
+                *lookup_for_task.lock().unwrap() = map;
+            }
+            Err(e) => {
+                eprintln!("Failed to load stops: {e}");
+                ui_handle_stops.set_busstation_label("Cannot load all stops".into())
+            }
+        }
+    })).unwrap();
+}
+//fn filter_search_results(input: &str, existing_bus_stops_original: Vec<>, ) -> ModelRc<ListItem> {
+//
+//}
 
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]

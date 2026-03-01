@@ -1,16 +1,16 @@
 [package]
-name = "CarrisMetropolianaDesktopUI"
+name = "carris-ui"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
 crate-type = ["lib", "cdylib"]
 path = "src/lib.rs"
-name = "carrismetropoliana_lib"
+name = "carris_ui_lib"
 
 [[bin]]
 path = "src/main.rs"
-name = "CarrisMetropolianaDesktopUI"
+name = "carris-ui"
 
 [dependencies]
 carris-api = { path = "../api-client", features = ["std"], default-features = false}
@@ -21,13 +21,13 @@ slint = { version = "1.15", features = [
     "live-preview", # It enables hot reloading.
     "renderer-femtovg", # It is the only renderer that simply works out of the box on desktop. It has impact only on desktop.
 ] }
-defmt = { version = "1.0.1", features = ["alloc"] }
 xdg = { version = "3.0.0", features = ["serde"] }
 anyhow = "1.0.102"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3.26.0"
 tokio = { version = "1.49.0", features = ["full"] }
+log = { version = "0.4.29", features = ["serde", "std", "kv", "kv_std", "kv_serde"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

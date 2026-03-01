@@ -17,6 +17,7 @@ export component MainWindow inherits Window {
 
     callback bus_station_selected(text: string);
     callback searchbar_bus_station_clicked(index: int);
+    callback filter_searchbar_options(text: string);
 
     Vertical {
         height: 100%;
@@ -29,6 +30,10 @@ export component MainWindow inherits Window {
             }
             action-button-clicked(index) => {
                 searchbar_bus_station_clicked(index);
+            }
+
+            edited(text) => {
+                filter_searchbar_options(text);
             }
         }
 
