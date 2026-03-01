@@ -18,6 +18,7 @@ export component MainWindow inherits Window {
     callback bus_station_selected(text: string);
     callback searchbar_bus_station_clicked(index: int);
     callback filter_searchbar_options(text: string);
+    callback searchbar_key_released(event: KeyEvent);
 
     Vertical {
         height: 100%;
