@@ -21,9 +21,9 @@ jobs:
       matrix:
         action:
           - command: build
-            args: --release
+            args: --release --target riscv32imc-unknown-none-elf
           - command: fmt
-            args: --all -- --check
+            args: --all -- --check --target riscv32imc-unknown-none-elf
           - command: clippy
             args: --no-default-features --features embedded --workspace -- -D warnings
     steps:
