@@ -2,6 +2,10 @@ name: "CarrisDesktopNixBuild"
 on:
   pull_request:
   push:
+    branches:
+      - main
+    paths-ignore:
+      - "**/README.md"
 jobs:
   tests:
     runs-on: ubuntu-latest
