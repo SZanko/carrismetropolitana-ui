@@ -1,23 +1,18 @@
+use crate::api_client;
+use carris_api::types::{CarrisAPI, Stop};
 use std::fs;
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 use std::sync::OnceLock;
 use xdg::BaseDirectories;
-use carris_api::types::{CarrisAPI, Stop};
-use crate::api_client;
 
 static XDG_DIRS: OnceLock<BaseDirectories> = OnceLock::new();
 
 fn xdg_dirs() -> &'static BaseDirectories {
-    XDG_DIRS.get_or_init(|| {
-        BaseDirectories::with_prefix("carris-ui")
-    })
+    XDG_DIRS.get_or_init(|| BaseDirectories::with_prefix("carris-ui"))
 }
 
-pub async fn ensure_stops_cached_with<A>(
-    xdg: &BaseDirectories,
-    api: &A,
-) -> anyhow::Result<()>
+pub async fn ensure_stops_cached_with<A>(xdg: &BaseDirectories, api: &A) -> anyhow::Result<()>
 where
     A: CarrisAPI,
     A::Error: std::error::Error + Send + Sync + 'static,
@@ -25,11 +20,14 @@ where
     if xdg.find_cache_file("all-stops.json").is_some() {
         log::info!("Found cached Stops");
         return Ok(());
-    }
-    else {
+    } else {
         log::warn!("No stops cached");
         let expected = xdg.get_cache_file("all-stops.json").expect("REASON");
-        log::warn!("Expecting cache at: {} and Exists? {}", expected.display(), expected.display());
+        log::warn!(
+            "Expecting cache at: {} and Exists? {}",
+            expected.display(),
+            expected.display()
+        );
     }
 
     log::info!("Check if stops file exists and if not download it");
@@ -45,7 +43,6 @@ pub async fn ensure_stops_cached_if_not_cached_download() -> anyhow::Result<()> 
     ensure_stops_cached_with(xdg_dirs(), api_client()).await
 }
 
-
 pub async fn get_all_stops_cached() -> anyhow::Result<Vec<Stop>> {
     ensure_stops_cached_if_not_cached_download().await?;
 
@@ -60,9 +57,7 @@ pub async fn get_all_stops_cached() -> anyhow::Result<Vec<Stop>> {
     Ok(stops)
 }
 
-pub fn load_config_from_disk() {
-
-}
+pub fn load_config_from_disk() {}
 
 pub fn save_config() -> std::io::Result<()> {
     let config_path = xdg_dirs()
@@ -77,10 +72,10 @@ pub fn save_config() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use carris_api::types::Arrival;
+    use core::future::Future;
     use tempfile::tempdir;
     use xdg::BaseDirectories;
-    use core::future::Future;
-    use carris_api::types::Arrival;
 
     struct FakeApi {
         stops: Vec<Stop>,
@@ -117,5 +112,4 @@ mod tests {
             }
         }
     }
-
 }

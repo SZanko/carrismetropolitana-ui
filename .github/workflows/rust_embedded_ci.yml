@@ -25,7 +25,7 @@ jobs:
           - command: fmt
             args: --all -- --check
           - command: clippy
-            args: --all-features --workspace -- -D warnings
+            args: --no-default-features --features embedded --workspace -- -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -38,4 +38,4 @@ jobs:
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
       - name: Run command
-        run: cd embedded && cargo ${{ matrix.action.command }} ${{ matrix.action.args }} 
+        run: cargo ${{ matrix.action.command }} --manifest-path embedded/Cargo.toml ${{ matrix.action.args }} 

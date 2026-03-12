@@ -10,12 +10,12 @@
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 
-use esp_radio::ble::controller::BleConnector;
 use bt_hci::controller::ExternalController;
+use esp_radio::ble::controller::BleConnector;
 use trouble_host::prelude::*;
 
-use esp_println as _;
 use defmt::info;
+use esp_println as _;
 
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
@@ -38,7 +38,6 @@ esp_bootloader_esp_idf::esp_app_desc!();
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     // generator version: 1.2.0
-
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
