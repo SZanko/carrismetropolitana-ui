@@ -38,4 +38,4 @@ jobs:
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
       - name: Run command
-        run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }} --manifest-path embedded
+        run: cd embedded && cargo ${{ matrix.action.command }} ${{ matrix.action.args }} 
