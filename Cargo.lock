@@ -928,6 +928,7 @@ dependencies = [
  "slint-build",
  "tempfile",
  "tokio",
+ "tracing",
  "wasm-bindgen",
  "xdg",
 ]

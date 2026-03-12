@@ -118,7 +118,12 @@
                   ]
                 else
                   [ ]
-              );
+              )
+              ++
+              # Bare-metal RISC-V target
+              [
+                "riscv32imc-unknown-none-elf"
+              ];
             # TODO: find a way to include "aarch64-pc-windows-msvc" "x86_64-pc-windows-msvc"
           })
           clippy

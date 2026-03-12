@@ -7,14 +7,15 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::Instrument;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 slint::include_modules!();
 
-static API_CLIENT: OnceLock<CarrisClient> = OnceLock::new();
-
 pub fn api_client() -> &'static CarrisClient {
+    static API_CLIENT: OnceLock<CarrisClient> = OnceLock::new();
+
     API_CLIENT.get_or_init(|| CarrisClient::new())
 }
 
@@ -74,7 +75,7 @@ pub fn main() {
 
     fill_searchbar_with_options(&ui, lookup_for_task);
 
-    update_selected_bus_stop(&ui, &lookup);
+    update_selected_bus_stop(&ui, Arc::clone(&lookup_for_stop));
 
     let ui_searchbar_action_button_weak = ui.as_weak();
     let lookup_searchbar_action_button_cb = lookup.clone();
@@ -109,53 +110,61 @@ fn spawn_action_button_to_element(
     .expect("Cannot connect action button and event");
 }
 
-
 fn spawn_filter_search(
     ui_weak: Weak<MainWindow>,
     lookup: Arc<Mutex<HashMap<String, String>>>,
     text: SharedString,
 ) {
-    slint::spawn_local(async_compat::Compat::new(async move {
-        if text.is_empty() {
-            return;
+    slint::spawn_local(async_compat::Compat::new(
+        {
+            let text = text.clone();
+
+            async move {
+                if text.is_empty() {
+                    return;
+                }
+
+                let query = text.to_string();
+
+                let map = lookup.lock().unwrap();
+
+                let results = filter_search_string(&query, &map, 25);
+                log::info!("Got a total of {} results", results.len());
+
+                if let Some(ui) = ui_weak.upgrade() {
+                    let items = results.iter().map(|result| {
+                        let key = result.clone();
+
+                        let supporting = map.get(key.as_str()).cloned().unwrap_or_default();
+
+                        ListItem {
+                            text: key.into(),
+                            supporting_text: supporting.into(),
+                            avatar_icon: Image::default(),
+                            avatar_text: SharedString::new(),
+                            avatar_background: Color::from_argb_u8(0, 0, 0, 0),
+                            avatar_foreground: Color::from_argb_u8(0, 0, 0, 0),
+                            action_button_icon: Image::load_from_path(Path::new(
+                                "desktop/ui/slint-logo.svg",
+                            ))
+                            .unwrap(), //Image::default(),
+                        }
+                    });
+
+                    ui.set_bus_stations(ModelRc::new(VecModel::from_iter(items)));
+                } else {
+                    log::error!("Failed to upgrade UI weak reference");
+                }
+            }
         }
-
-        let query = text.to_string();
-        log::info!("(async) got text = {query}");
-
-        let results = filter_search_string(&query, &lookup, 25);
-        let mut filter_result: Vec<ListItem> = Vec::with_capacity(results.len());
-
-        let map = lookup.lock().unwrap();
-
-        for result in results {
-            let key = result.clone();
-
-            let supporting = map.get(key.as_str()).cloned().unwrap_or_default();
-
-            filter_result.push(ListItem {
-                text: result.into(),
-                supporting_text: supporting.into(),
-                avatar_icon: Image::default(),
-                avatar_text: SharedString::new(),
-                avatar_background: Color::from_argb_u8(0, 0, 0, 0),
-                avatar_foreground: Color::from_argb_u8(0, 0, 0, 0),
-                action_button_icon: Image::load_from_path(Path::new("desktop/ui/slint-logo.svg"))
-                    .unwrap(), //Image::default(),
-            })
-        }
-        drop(map);
-
-        if let Some(ui) = ui_weak.upgrade() {
-            ui.set_bus_stations(ModelRc::new(VecModel::from(filter_result)));
-        }
-    }))
+        .instrument(tracing::info_span!("Search", query = text.as_str())),
+    ))
     .expect("Cannot filter search options in searchbar");
 }
 
 fn filter_search_string(
     query: &str,
-    lookup: &Arc<Mutex<HashMap<String, String>>>,
+    lookup: &HashMap<String, String>,
     limit: usize,
 ) -> Vec<SharedString> {
     let lquery = query.trim().to_lowercase();
@@ -163,10 +172,7 @@ fn filter_search_string(
         return vec![];
     }
 
-    let keys: Vec<String> = {
-        let map = lookup.lock().unwrap();
-        map.keys().cloned().collect()
-    };
+    let keys: Vec<_> = lookup.keys().cloned().collect();
 
     let results = keys
         .into_iter()
@@ -178,14 +184,13 @@ fn filter_search_string(
     return results;
 }
 
-fn update_selected_bus_stop(ui: &MainWindow, lookup: &Arc<Mutex<HashMap<String, String>>>) {
+fn update_selected_bus_stop(ui: &MainWindow, lookup: Arc<Mutex<HashMap<String, String>>>) {
     let ui_for_cb = ui.clone_strong();
-    let lookup_for_cb = lookup.clone();
     ui.on_bus_station_selected(move |search_text: SharedString| {
         let name = search_text.to_string();
 
         let stop_id = {
-            let map = lookup_for_cb.lock().unwrap();
+            let map = lookup.lock().unwrap();
             map.get(&name).cloned()
         };
 
