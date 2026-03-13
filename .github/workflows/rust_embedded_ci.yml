@@ -25,7 +25,7 @@ jobs:
           - command: fmt
             args: --all -- --check 
           - command: clippy
-            args: --no-default-features --features embedded --workspace -- -D warnings
+            args: --target riscv32imc-unknown-none-elf --workspace -- -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
