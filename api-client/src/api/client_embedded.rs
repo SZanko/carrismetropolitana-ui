@@ -26,8 +26,16 @@ where
     TCP: embedded_nal_async::TcpConnect,
     DNS: embedded_nal_async::Dns,
 {
-    pub fn new(http: HttpClient<'a, TCP, DNS>, rx_buf: &'a mut [u8], body_buf: &'a mut [u8]) -> Self {
-        Self { http, rx_buf, body_buf }
+    pub fn new(
+        http: HttpClient<'a, TCP, DNS>,
+        rx_buf: &'a mut [u8],
+        body_buf: &'a mut [u8],
+    ) -> Self {
+        Self {
+            http,
+            rx_buf,
+            body_buf,
+        }
     }
 
     pub async fn arrivals_by_stop(
@@ -40,7 +48,7 @@ where
             "https://api.carrismetropolitana.pt/v2/arrivals/by_stop/{}",
             stop_id
         )
-            .map_err(|_| Error::TooLarge)?;
+        .map_err(|_| Error::TooLarge)?;
 
         let mut req = self
             .http

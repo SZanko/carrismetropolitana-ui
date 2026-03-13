@@ -1,5 +1,5 @@
-use serde::{Deserialize, Deserializer, Serialize};
 use alloc::string::String;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 // https://transform.tools/json-to-rust-serde
@@ -62,7 +62,7 @@ where
 pub trait CarrisAPI {
     type Error;
 
-    fn new()->Self;
+    fn new() -> Self;
     fn new_with_base_url(base_url: &str) -> Self;
 
     fn arrivals_by_stop<'a>(
@@ -70,9 +70,7 @@ pub trait CarrisAPI {
         stop: &'a str,
     ) -> impl Future<Output = Result<Vec<Arrival>, Self::Error>> + 'a;
 
-    fn get_all_stops<'a>(
-        &'a self,
-    ) -> impl Future<Output = Result<Vec<Stop>, Self::Error>> + 'a;
+    fn get_all_stops<'a>(&'a self) -> impl Future<Output = Result<Vec<Stop>, Self::Error>> + 'a;
 }
 
 pub fn best_arrival_unix(a: &Arrival) -> Option<i64> {
